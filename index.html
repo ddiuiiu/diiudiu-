@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#F7F4EE">
+  <title>计划</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: linear-gradient(135deg, #E5E0D8, #D8D3CB);
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+      font-family: 'Noto Sans SC', -apple-system, 'PingFang SC', sans-serif;
+      color: #2D2A26; -webkit-font-smoothing: antialiased;
+    }
+
+    :root {
+      --bg: #F7F4EE; --card: #FFFFFF;
+      --sage: #94A89A; --honey: #B89968; --green: #7BA688;
+      --gray: #E8E4DB; --gray2: #F0EDE6;
+      --t1: #2D2A26; --t2: #8C8579; --t3: #B5AFA3;
+      --num: 'Inter', -apple-system, sans-serif;
+    }
+
+    .phone {
+      width: 390px; height: 844px;
+      background: var(--bg); border-radius: 44px;
+      overflow: hidden; position: relative;
+      box-shadow: 0 0 0 10px #1C1C1E, 0 30px 80px rgba(0,0,0,.25);
+      display: flex; flex-direction: column;
+    }
+    @media (max-width: 430px) {
+      body { background: var(--bg); padding: 0; }
+      .phone { width: 100vw; height: 100vh; border-radius: 0; box-shadow: none; }
+    }
+
+    .page-wrap { flex: 1; overflow: hidden; position: relative; }
+    .page {
+      position: absolute; inset: 0; overflow-y: auto;
+      padding: 20px; display: none; flex-direction: column;
+    }
+    .page.active { display: flex; animation: fadeIn .25s ease; }
+    .page::-webkit-scrollbar { display: none; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-shrink: 0; }
+    .header-left { display: flex; flex-direction: column; gap: 3px; }
+    .h-title { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+    .h-sub { font-size: 13px; color: var(--t2); }
+    .add-btn {
+      width: 36px; height: 36px; background: var(--sage);
+      border-radius: 18px; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: transform .15s;
+      box-shadow: 0 2px 8px rgba(148,168,154,.3);
+    }
+    .add-btn:active { transform: scale(.88); }
+
+    /* Tab Bar */
+    .tabbar {
+      height: 65px; background: var(--card);
+      display: flex; align-items: center; justify-content: space-evenly;
+      padding: 12px 0 8px; flex-shrink: 0;
+      border-top: 1px solid rgba(232,228,219,.5);
+    }
+    .tab {
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 13px; color: var(--t3);
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 4px 10px; transition: color .2s;
+    }
+    .tab.active { font-weight: 600; color: var(--sage); }
+    .tab-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--sage); opacity: 0; transition: opacity .2s; }
+    .tab.active .tab-dot { opacity: 1; }
+
+    /* === Day Plan === */
+    .day-cols { display: flex; flex: 1; gap: 0; }
+    .day-col { flex: 1; display: flex; flex-direction: column; }
+    .day-col.l { padding-right: 14px; }
+    .day-col.r { padding-left: 14px; border-left: 1px solid var(--gray); }
+    .col-h { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .col-h-t { font-size: 15px; font-weight: 600; }
+    .col-h-c { font-family: var(--num); font-size: 11px; font-weight: 600; color: var(--t2); background: var(--gray); padding: 2px 7px; border-radius: 10px; }
+
+    .todo-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; cursor: pointer; }
+    .todo-item:active { opacity: .6; }
+    .cb {
+      width: 22px; height: 22px; border: 2px solid var(--gray); border-radius: 50%;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s;
+    }
+    .cb.on { background: var(--green); border-color: var(--green); }
+    .todo-txt { font-size: 14px; line-height: 1.4; word-break: break-all; }
+    .todo-txt.done { text-decoration: line-through; color: var(--t3); }
+
+    .empty-hint { font-size: 13px; color: var(--t3); padding: 20px 0; text-align: center; }
+
+    /* === Notebook List (Week/Month/Year) === */
+    .notebook { display: flex; flex-direction: column; gap: 2px; }
+    .nb-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--gray2);
+      cursor: pointer;
+    }
+    .nb-item:active { background: var(--gray2); }
+    .nb-num {
+      font-family: var(--num); font-size: 14px; font-weight: 500;
+      color: var(--t3); min-width: 24px; text-align: right; line-height: 22px;
+    }
+    .nb-cb {
+      width: 20px; height: 20px; border: 2px solid var(--gray); border-radius: 5px;
+      flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+    }
+    .nb-cb.on { background: var(--sage); border-color: var(--sage); }
+    .nb-txt { font-size: 14px; line-height: 1.5; flex: 1; word-break: break-all; }
+    .nb-txt.done { text-decoration: line-through; color: var(--t3); }
+    .nb-del {
+      width: 24px; height: 24px; border: none; background: none; cursor: pointer;
+      color: var(--t3); font-size: 18px; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .2s; flex-shrink: 0;
+    }
+    .nb-item:hover .nb-del { opacity: 1; }
+
+    /* === Countdown === */
+    .cd-card {
+      background: var(--card); border-radius: 14px; padding: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,.03); margin-bottom: 12px;
+    }
+    .cd-left { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+    .cd-name { font-size: 15px; font-weight: 500; word-break: break-all; }
+    .cd-date { font-family: var(--num); font-size: 13px; color: var(--t2); }
+    .cd-right { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; margin-left: 12px; }
+    .cd-days { font-family: var(--num); font-size: 28px; font-weight: 700; line-height: 1; }
+    .cd-unit { font-size: 13px; color: var(--t2); }
+    .cd-del {
+      width: 24px; height: 24px; border: none; background: none; cursor: pointer;
+      color: var(--t3); font-size: 16px; flex-shrink: 0; margin-left: 8px;
+    }
+
+    /* === Health === */
+    .h-card { background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.03); }
+    .h-card-t { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+    .weight-display { display: flex; align-items: baseline; gap: 6px; margin-bottom: 14px; }
+    .weight-val { font-family: var(--num); font-size: 42px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+    .weight-unit { font-family: var(--num); font-size: 16px; font-weight: 500; color: var(--t2); }
+    .weight-trend { font-family: var(--num); font-size: 14px; font-weight: 500; margin-left: 8px; }
+    .weight-trend.up { color: var(--honey); }
+    .weight-trend.down { color: var(--green); }
+    .weight-trend.flat { color: var(--t2); }
+    .h-btns { display: flex; gap: 10px; margin-bottom: 14px; }
+    .btn-p { flex: 1; background: var(--sage); color: #fff; border: none; border-radius: 12px; padding: 10px 0; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: transform .15s; }
+    .btn-p:active { transform: scale(.97); }
+    .btn-s { flex: 1; background: transparent; color: var(--t2); border: 1px solid var(--gray); border-radius: 12px; padding: 10px 0; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: transform .15s; }
+    .btn-s:active { transform: scale(.97); }
+    .record { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; }
+    .record + .record { border-top: 1px solid var(--gray); }
+    .r-date { font-size: 12px; color: var(--t2); }
+    .r-val { font-family: var(--num); font-size: 14px; font-weight: 500; }
+    .r-trend { font-family: var(--num); font-size: 12px; font-weight: 500; }
+    .r-trend.up { color: var(--honey); }
+    .r-trend.down { color: var(--green); }
+    .r-trend.flat { color: var(--t2); }
+
+    .meal-row { display: flex; gap: 14px; align-items: flex-start; padding: 8px 0; }
+    .meal-row + .meal-row { border-top: 1px solid var(--gray2); }
+    .meal-label { font-size: 14px; font-weight: 500; width: 42px; flex-shrink: 0; line-height: 1.6; }
+    .meal-items { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .meal-item { font-size: 13px; color: var(--t2); line-height: 1.6; }
+    .meal-add { display: inline-flex; align-items: center; gap: 5px; color: var(--sage); font-size: 13px; font-weight: 500; cursor: pointer; }
+    .meal-add:active { opacity: .6; }
+    .meal-del { color: var(--t3); font-size: 12px; cursor: pointer; margin-left: 8px; }
+
+    /* === Modal / Input Overlay === */
+    .overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,.3);
+      display: none; align-items: flex-end; justify-content: center; z-index: 100;
+    }
+    .overlay.show { display: flex; animation: fadeIn .2s ease; }
+    .modal {
+      background: var(--card); width: 100%; border-radius: 20px 20px 0 0;
+      padding: 24px 20px 32px; animation: slideUp .3s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-title { font-size: 17px; font-weight: 600; text-align: center; margin-bottom: 20px; }
+    .modal-input {
+      width: 100%; border: 1.5px solid var(--gray); border-radius: 12px;
+      padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--t1);
+      background: var(--bg); outline: none; transition: border-color .2s;
+    }
+    .modal-input:focus { border-color: var(--sage); }
+    .modal-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .modal-row .modal-input { flex: 1; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+    .modal-btn-ok { flex: 1; background: var(--sage); color: #fff; border: none; border-radius: 12px; padding: 12px 0; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .modal-btn-cancel { flex: 1; background: var(--gray2); color: var(--t2); border: none; border-radius: 12px; padding: 12px 0; font-family: inherit; font-size: 15px; cursor: pointer; }
+    .modal-label { font-size: 13px; color: var(--t2); margin-bottom: 6px; margin-top: 14px; }
+    .modal-hint { font-size: 12px; color: var(--t3); margin-top: 10px; text-align: center; }
+
+    .check-svg { width: 12px; height: 12px; }
+    .check-svg-sm { width: 10px; height: 10px; }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="page-wrap">
+
+      <!-- ===== 日计划 ===== -->
+      <div class="page active" data-page="day">
+        <div class="header">
+          <div class="header-left">
+            <div class="h-title">今天</div>
+            <div class="h-sub" id="day-date"></div>
+          </div>
+          <button class="add-btn" onclick="openModal('day')">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3.5V12.5M3.5 8H12.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="day-cols">
+          <div class="day-col l">
+            <div class="col-h"><span class="col-h-t">待办</span><span class="col-h-c" id="day-pending-count">0</span></div>
+            <div id="day-pending"></div>
+          </div>
+          <div class="day-col r">
+            <div class="col-h"><span class="col-h-t">已完成</span><span class="col-h-c" id="day-done-count">0</span></div>
+            <div id="day-done"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 周计划 ===== -->
+      <div class="page" data-page="week">
+        <div class="header">
+          <div class="header-left">
+            <div class="h-title">本周</div>
+            <div class="h-sub" id="week-range"></div>
+          </div>
+          <button class="add-btn" onclick="openModal('week')">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3.5V12.5M3.5 8H12.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="notebook" id="week-list"></div>
+      </div>
+
+      <!-- ===== 月计划 ===== -->
+      <div class="page" data-page="month">
+        <div class="header">
+          <div class="header-left">
+            <div class="h-title">本月</div>
+            <div class="h-sub" id="month-label"></div>
+          </div>
+          <button class="add-btn" onclick="openModal('month')">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3.5V12.5M3.5 8H12.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="notebook" id="month-list"></div>
+      </div>
+
+      <!-- ===== 年计划 ===== -->
+      <div class="page" data-page="year">
+        <div class="header">
+          <div class="header-left">
+            <div class="h-title" id="year-title"></div>
+            <div class="h-sub">年度计划</div>
+          </div>
+          <button class="add-btn" onclick="openModal('year')">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3.5V12.5M3.5 8H12.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="notebook" id="year-list"></div>
+      </div>
+
+      <!-- ===== 倒计时 ===== -->
+      <div class="page" data-page="countdown">
+        <div class="header">
+          <div class="header-left">
+            <div class="h-title">倒计时</div>
+            <div class="h-sub">重要日期</div>
+          </div>
+          <button class="add-btn" onclick="openModal('countdown')">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3.5V12.5M3.5 8H12.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div id="cd-list"></div>
+      </div>
+
+      <!-- ===== 健康 ===== -->
+      <div class="page" data-page="health">
+        <div class="header">
+          <div class="header-left">
+            <div class="h-title">健康</div>
+            <div class="h-sub">今日记录</div>
+          </div>
+          <button class="add-btn" onclick="openModal('health-meal')">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3.5V12.5M3.5 8H12.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <div class="h-card">
+          <div class="h-card-t">体重</div>
+          <div class="weight-display">
+            <span class="weight-val" id="w-val">--</span>
+            <span class="weight-unit">kg</span>
+            <span class="weight-trend flat" id="w-trend"></span>
+          </div>
+          <div class="h-btns">
+            <button class="btn-p" onclick="openModal('weight')">手动记录</button>
+            <button class="btn-s" onclick="alert('体脂秤连接功能需要配合硬件设备使用')">连接体脂秤</button>
+          </div>
+          <div id="w-records"></div>
+        </div>
+
+        <div class="h-card">
+          <div class="h-card-t">今日饮食</div>
+          <div id="diet-list"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tab Bar -->
+    <nav class="tabbar">
+      <button class="tab active" data-tab="day"><span>日</span><span class="tab-dot"></span></button>
+      <button class="tab" data-tab="week"><span>周</span><span class="tab-dot"></span></button>
+      <button class="tab" data-tab="month"><span>月</span><span class="tab-dot"></span></button>
+      <button class="tab" data-tab="year"><span>年</span><span class="tab-dot"></span></button>
+      <button class="tab" data-tab="countdown"><span>计时</span><span class="tab-dot"></span></button>
+      <button class="tab" data-tab="health"><span>健康</span><span class="tab-dot"></span></button>
+    </nav>
+
+    <!-- Modal -->
+    <div class="overlay" id="overlay" onclick="closeModalBg(event)">
+      <div class="modal" id="modal" onclick="event.stopPropagation()">
+        <div class="modal-title" id="modal-title">添加</div>
+        <div id="modal-body"></div>
+        <div class="modal-btns">
+          <button class="modal-btn-cancel" onclick="closeModal()">取消</button>
+          <button class="modal-btn-ok" id="modal-ok" onclick="confirmModal()">确定</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ============ Data Layer (localStorage) ============
+    const DB = {
+      get(key, def) { try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; } },
+      set(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+    };
+
+    let data = {
+      day: DB.get('plan_day', []),          // [{id, text, done}]
+      week: DB.get('plan_week', []),        // [{id, text, done}]
+      month: DB.get('plan_month', []),      // [{id, text, done}]
+      year: DB.get('plan_year', []),        // [{id, text, done}]
+      countdown: DB.get('plan_cd', []),     // [{id, name, date}]
+      weights: DB.get('plan_w', []),        // [{id, date, weight}]
+      diet: DB.get('plan_diet', {}),        // {breakfast:[], lunch:[], dinner:[]}
+    };
+
+    function save(key) { DB.set('plan_' + key, data[key]); }
+
+    function uid() { return Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
+
+    // ============ Date Helpers ============
+    const now = new Date();
+    const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+    function fmtDate(d) { return (d.getMonth()+1) + '月' + d.getDate() + '日 ' + weekdays[d.getDay()]; }
+    function fmtDateShort(d) { return (d.getMonth()+1) + '月' + d.getDate() + '日'; }
+    function daysBetween(d1, d2) {
+      return Math.ceil((d2 - d1) / 86400000);
+    }
+    function todayStr() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    // ============ SVG ============
+    const CHECK = '<svg class="check-svg" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const CHECK_SM = '<svg class="check-svg-sm" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const PLUS_SM = '<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2.5V11.5M2.5 7H11.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+    // ============ Render: Day Plan ============
+    function renderDay() {
+      const pending = data.day.filter(i => !i.done);
+      const done = data.day.filter(i => i.done);
+
+      document.getElementById('day-pending-count').textContent = pending.length;
+      document.getElementById('day-done-count').textContent = done.length;
+
+      const pe = document.getElementById('day-pending');
+      const de = document.getElementById('day-done');
+
+      pe.innerHTML = pending.length ? pending.map(i =>
+        `<div class="todo-item" onclick="toggleDay('${i.id}')">
+          <div class="cb"></div><span class="todo-txt">${esc(i.text)}</span>
+        </div>`
+      ).join('') : '<div class="empty-hint">点击 + 添加待办</div>';
+
+      de.innerHTML = done.length ? done.map(i =>
+        `<div class="todo-item" onclick="toggleDay('${i.id}')">
+          <div class="cb on">${CHECK}</div><span class="todo-txt done">${esc(i.text)}</span>
+        </div>`
+      ).join('') : '';
+    }
+
+    function toggleDay(id) {
+      const item = data.day.find(i => i.id === id);
+      if (item) { item.done = !item.done; save('day'); renderDay(); }
+    }
+
+    // ============ Render: Notebook (Week/Month/Year) ============
+    function renderNotebook(key) {
+      const list = data[key];
+      const el = document.getElementById(key + '-list');
+      el.innerHTML = list.length ? list.map((i, idx) =>
+        `<div class="nb-item" onclick="toggleNB('${key}','${i.id}')">
+          <span class="nb-num">${idx + 1}</span>
+          <div class="nb-cb ${i.done ? 'on' : ''}">${i.done ? CHECK_SM : ''}</div>
+          <span class="nb-txt ${i.done ? 'done' : ''}">${esc(i.text)}</span>
+          <button class="nb-del" onclick="delNB(event,'${key}','${i.id}')">&times;</button>
+        </div>`
+      ).join('') : '<div class="empty-hint">点击 + 添加计划</div>';
+    }
+
+    function toggleNB(key, id) {
+      const item = data[key].find(i => i.id === id);
+      if (item) { item.done = !item.done; save(key); renderNotebook(key); }
+    }
+
+    function delNB(e, key, id) {
+      e.stopPropagation();
+      data[key] = data[key].filter(i => i.id !== id);
+      save(key); renderNotebook(key);
+    }
+
+    // ============ Render: Countdown ============
+    function renderCountdown() {
+      const el = document.getElementById('cd-list');
+      const today = new Date(); today.setHours(0,0,0,0);
+
+      el.innerHTML = data.countdown.length ? data.countdown.map(c => {
+        const target = new Date(c.date);
+        const days = daysBetween(today, target);
+        const isPast = days < 0;
+        const color = c.important ? 'var(--honey)' : 'var(--sage)';
+        return `<div class="cd-card">
+          <div class="cd-left">
+            <div class="cd-name" style="${c.important ? 'font-weight:700;color:var(--honey)' : ''}">${esc(c.name)}</div>
+            <div class="cd-date">${fmtDateShort(target)}</div>
+          </div>
+          <div class="cd-right">
+            <span class="cd-days" style="color:${color}">${Math.abs(days)}</span>
+            <span class="cd-unit">${isPast ? '天前' : '天'}</span>
+          </div>
+          <button class="cd-del" onclick="delCD('${c.id}')">&times;</button>
+        </div>`;
+      }).join('') : '<div class="empty-hint">点击 + 添加倒计时</div>';
+    }
+
+    function delCD(id) {
+      data.countdown = data.countdown.filter(c => c.id !== id);
+      save('countdown'); renderCountdown();
+    }
+
+    // ============ Render: Health ============
+    function renderHealth() {
+      // Weight
+      const ws = data.weights;
+      const wVal = document.getElementById('w-val');
+      const wTrend = document.getElementById('w-trend');
+      const wRec = document.getElementById('w-records');
+
+      if (ws.length === 0) {
+        wVal.textContent = '--';
+        wTrend.textContent = '';
+        wTrend.className = 'weight-trend flat';
+        wRec.innerHTML = '<div class="empty-hint" style="padding:10px 0">暂无记录</div>';
+      } else {
+        const latest = ws[ws.length - 1];
+        wVal.textContent = latest.weight;
+
+        if (ws.length >= 2) {
+          const prev = ws[ws.length - 2];
+          const diff = latest.weight - prev.weight;
+          if (Math.abs(diff) < 0.05) {
+            wTrend.textContent = '- 持平';
+            wTrend.className = 'weight-trend flat';
+          } else if (diff > 0) {
+            wTrend.textContent = '\u2191 ' + diff.toFixed(1) + ' kg';
+            wTrend.className = 'weight-trend up';
+          } else {
+            wTrend.textContent = '\u2193 ' + Math.abs(diff).toFixed(1) + ' kg';
+            wTrend.className = 'weight-trend down';
+          }
+        } else {
+          wTrend.textContent = '';
+        }
+
+        // Records (latest 5, reverse)
+        const recent = ws.slice(-5).reverse();
+        wRec.innerHTML = recent.map((r, idx) => {
+          const nextIdx = ws.length - 1 - idx;
+          let trendHtml = '';
+          if (nextIdx > 0) {
+            const prevW = ws[nextIdx - 1];
+            const diff = r.weight - prevW.weight;
+            if (Math.abs(diff) < 0.05) { trendHtml = '<span class="r-trend flat">-</span>'; }
+            else if (diff > 0) { trendHtml = '<span class="r-trend up">\u2191' + diff.toFixed(1) + '</span>'; }
+            else { trendHtml = '<span class="r-trend down">\u2193' + Math.abs(diff).toFixed(1) + '</span>'; }
+          }
+          return `<div class="record">
+            <span class="r-date">${esc(r.date)}</span>
+            <span class="r-val">${r.weight} kg</span>
+            ${trendHtml}
+          </div>`;
+        }).join('');
+      }
+
+      // Diet
+      const meals = ['breakfast', 'lunch', 'dinner'];
+      const labels = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' };
+      if (!data.diet.breakfast) { data.diet = { breakfast: [], lunch: [], dinner: [] }; }
+      const dietEl = document.getElementById('diet-list');
+      dietEl.innerHTML = meals.map(m => {
+        const items = data.diet[m] || [];
+        const itemsHtml = items.length ? items.map(it =>
+          `<div class="meal-item">${esc(it)} <span class="meal-del" onclick="delMeal('${m}','${esc(it)}')">&times;</span></div>`
+        ).join('') : '';
+        return `<div class="meal-row">
+          <div class="meal-label">${labels[m]}</div>
+          <div class="meal-items">
+            ${itemsHtml}
+            <div class="meal-add" onclick="openModal('meal-${m}')">${PLUS_SM}<span>添加</span></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function delMeal(meal, item) {
+      data.diet[meal] = data.diet[meal].filter(i => i !== item);
+      save('diet'); renderHealth();
+    }
+
+    // ============ Modal ============
+    let modalMode = null;
+
+    function openModal(mode) {
+      modalMode = mode;
+      const overlay = document.getElementById('overlay');
+      const title = document.getElementById('modal-title');
+      const body = document.getElementById('modal-body');
+
+      const inputHtml = (placeholder, type, id) =>
+        `<input class="modal-input" type="${type||'text'}" id="${id}" placeholder="${placeholder}" autocomplete="off">`;
+
+      if (mode === 'day') {
+        title.textContent = '添加待办';
+        body.innerHTML = inputHtml('输入待办内容...', 'text', 'm-input');
+      } else if (mode === 'week' || mode === 'month' || mode === 'year') {
+        title.textContent = '添加' + ({week:'周',month:'月',year:'年'})[mode] + '计划';
+        body.innerHTML = inputHtml('输入计划内容...', 'text', 'm-input');
+      } else if (mode === 'countdown') {
+        title.textContent = '添加倒计时';
+        body.innerHTML =
+          inputHtml('事件名称（如：妈妈生日）', 'text', 'm-name') +
+          '<div class="modal-label">目标日期</div>' +
+          `<input class="modal-input" type="date" id="m-date" value="${todayStr()}">` +
+          '<div class="modal-hint">勾选重要事件会以金色标注</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" id="m-imp" style="width:18px;height:18px"><label for="m-imp" style="font-size:14px;color:var(--t2)">标记为重要</label></div>';
+      } else if (mode === 'weight') {
+        title.textContent = '记录体重';
+        body.innerHTML = inputHtml('输入体重 (kg)', 'number', 'm-weight') +
+          '<div class="modal-label">日期</div>' +
+          `<input class="modal-input" type="date" id="m-wdate" value="${todayStr()}">`;
+      } else if (mode && mode.startsWith('meal-')) {
+        const meal = mode.split('-')[1];
+        const labels = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' };
+        title.textContent = '添加' + labels[meal];
+        body.innerHTML = inputHtml('输入食物（如：燕麦粥）', 'text', 'm-meal');
+      } else if (mode === 'health-meal') {
+        title.textContent = '添加饮食';
+        body.innerHTML =
+          '<div class="modal-label">选择餐次</div>' +
+          '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+            ['breakfast','lunch','dinner'].map(m => `<button class="btn-s" style="flex:1;padding:8px 0" id="meal-sel-${m}" onclick="selectMeal('${m}')">${({breakfast:'早餐',lunch:'午餐',dinner:'晚餐'})[m]}</button>`).join('') +
+          '</div>' +
+          inputHtml('输入食物', 'text', 'm-meal-input');
+        selectMeal('breakfast');
+      }
+
+      overlay.classList.add('show');
+      setTimeout(() => { const inp = body.querySelector('input'); if (inp) inp.focus(); }, 300);
+    }
+
+    let selectedMeal = 'breakfast';
+    function selectMeal(m) {
+      selectedMeal = m;
+      ['breakfast','lunch','dinner'].forEach(x => {
+        const el = document.getElementById('meal-sel-' + x);
+        if (el) {
+          if (x === m) { el.style.borderColor = 'var(--sage)'; el.style.color = 'var(--sage)'; }
+          else { el.style.borderColor = 'var(--gray)'; el.style.color = 'var(--t2)'; }
+        }
+      });
+    }
+
+    function closeModal() {
+      document.getElementById('overlay').classList.remove('show');
+      modalMode = null;
+    }
+
+    function closeModalBg(e) { if (e.target.id === 'overlay') closeModal(); }
+
+    function confirmModal() {
+      if (modalMode === 'day') {
+        const v = document.getElementById('m-input').value.trim();
+        if (!v) return;
+        data.day.push({ id: uid(), text: v, done: false });
+        save('day'); renderDay();
+      } else if (modalMode === 'week' || modalMode === 'month' || modalMode === 'year') {
+        const v = document.getElementById('m-input').value.trim();
+        if (!v) return;
+        data[modalMode].push({ id: uid(), text: v, done: false });
+        save(modalMode); renderNotebook(modalMode);
+      } else if (modalMode === 'countdown') {
+        const name = document.getElementById('m-name').value.trim();
+        const date = document.getElementById('m-date').value;
+        const imp = document.getElementById('m-imp').checked;
+        if (!name || !date) return;
+        data.countdown.push({ id: uid(), name, date, important: imp });
+        save('countdown'); renderCountdown();
+      } else if (modalMode === 'weight') {
+        const w = parseFloat(document.getElementById('m-weight').value);
+        const d = document.getElementById('m-wdate').value;
+        if (isNaN(w) || w <= 0) return;
+        const dateLabel = d ? d.replace(/-/g, '/').slice(5) + '日' : fmtDateShort(new Date());
+        data.weights.push({ id: uid(), date: dateLabel, weight: w });
+        save('weights'); renderHealth();
+      } else if (modalMode && modalMode.startsWith('meal-')) {
+        const meal = modalMode.split('-')[1];
+        const v = document.getElementById('m-meal').value.trim();
+        if (!v) return;
+        if (!data.diet[meal]) data.diet[meal] = [];
+        data.diet[meal].push(v);
+        save('diet'); renderHealth();
+      } else if (modalMode === 'health-meal') {
+        const v = document.getElementById('m-meal-input').value.trim();
+        if (!v) return;
+        if (!data.diet[selectedMeal]) data.diet[selectedMeal] = [];
+        data.diet[selectedMeal].push(v);
+        save('diet'); renderHealth();
+      }
+      closeModal();
+    }
+
+    // Enter key to confirm
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('show')) {
+        e.preventDefault();
+        confirmModal();
+      }
+    });
+
+    // ============ Esc ============
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ============ Tab Switching ============
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelector('.page[data-page="' + tab.dataset.tab + '"]').classList.add('active');
+      });
+    });
+
+    // ============ Init ============
+    document.getElementById('day-date').textContent = fmtDate(now);
+
+    // Week range
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    document.getElementById('week-range').textContent = fmtDateShort(monday) + ' - ' + fmtDateShort(sunday);
+
+    document.getElementById('month-label').textContent = (now.getMonth() + 1) + '月';
+    document.getElementById('year-title').textContent = now.getFullYear() + '年';
+
+    renderDay();
+    renderNotebook('week');
+    renderNotebook('month');
+    renderNotebook('year');
+    renderCountdown();
+    renderHealth();
+  </script>
+</body>
+</html>
